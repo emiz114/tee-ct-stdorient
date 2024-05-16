@@ -1,5 +1,5 @@
-# from @apouch github
-# 04_18_2024
+# adapted from @apouch github
+# updated 04_18_2024
 
 import sys
 import vtk
