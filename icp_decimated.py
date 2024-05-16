@@ -1,5 +1,5 @@
-# from @apouch github
-# 05_13_2024
+# adapted from @apouch github
+# updated 05_16_2024
 
 import os
 import sys
@@ -82,42 +82,28 @@ def write_aligned_polydata(output_path, aligned_polydata):
     writer.SetInputData(aligned_polydata)
     writer.Write()
 
-path = "/Users/emiz/Desktop/research/picsl/echo_ct/img4D_bavcta001/manual_segmentation/"
+if __name__ == "__main__":
 
-source_filepath = path + "19aligned01_bavcta001_manual.vtk"
-target_filepath = path + "mesh01_bavcta001_baseline.vtk"
-
-source = load_polydata(source_filepath, True)
-target = load_polydata(target_filepath, True)
-
-icp = compute_tform_icp(source, target)
-
-# finds non-decimated source
-source_nd = load_polydata(source_filepath, False)
-
-aligned = apply_tform(source_nd, icp)
-output_path = path + "19aligned01_bavcta001.vtk"
-write_aligned_polydata(output_path, aligned)
-
-# if __name__ == "__main__":
-
-#     if len(sys.argv) != 6: 
-#         print("Usage: python script.py source_file_path study_id source_file_vtk target_file_vtk")
-#     else: 
-#         # extract filenames from command line arguments
-#         input_path, study_id, source_seg_file, target_seg_file = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+    if len(sys.argv) != 5: 
+        print("")
+        print("*******************************************************************************************************************")
+        print("   USAGE: python3 | ./PATH/SCRIPT.py | /INPUT_PATH | /SOURCE.vtk | /TARGET.vtk | /OUTPUT_PATH/OUTPUT.vtk   ")
+        print("*******************************************************************************************************************")
+        print("")
+    else: 
+        # extract filenames from command line arguments
+        input_path, source_file, target_file, output_file = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
     
-#     # load PolyData
-#     source = load_polydata(source_seg_file, True)
-#     target = load_polydata(target_seg_file, True)
+    # load PolyData
+    source = load_polydata(input_path + source_file, True)
+    target = load_polydata(input_path + target_file, True)
 
-#     # obtain alignment with icp
-#     icp = compute_tform_icp(source, target)
+    # obtain alignment with icp
+    icp = compute_tform_icp(source, target)
 
-#     # find non-decimated source
-#     source_nd = load_polydata(source_seg_file, False)
+    # find non-decimated source
+    source_nd = load_polydata(input_path + source_file, False)
 
-#     # apply tform
-#     aligned = apply_tform(source_nd, icp)
-#     output_path = input_path + "aligned_idk.vtk"
-#     write_aligned_polydata(output_path, aligned)
+    # apply tform
+    aligned = apply_tform(source_nd, icp)
+    write_aligned_polydata(output_file, aligned)
