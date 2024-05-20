@@ -52,11 +52,15 @@ def align_meshes(source, target):
     pc_source, c_source = compute_principal_component(source)
     pc_target, c_target = compute_principal_component(target)
 
-    print("PCA Fixed Mesh:", pc_target)
-    print("Centroid Fixed Mesh:", c_target)
+    # Ensure consistent direction of principal components
+    if np.dot(pc_source, pc_target) < 0:
+        pc_source = -pc_source
+
+    # print("PCA Fixed Mesh:", pc_target)
+    # print("Centroid Fixed Mesh:", c_target)
     
-    print("PCA Moving Mesh:", pc_source)
-    print("Centroid Moving Mesh:", c_source)
+    # print("PCA Moving Mesh:", pc_source)
+    # print("Centroid Moving Mesh:", c_source)
 
     # rotate source to align with pc of target
     # computes cross product of the two eigenvectors to get axis of rotation
