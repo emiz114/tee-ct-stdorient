@@ -1,3 +1,4 @@
+# ITERATIVE CLOSEST POINT (ICP) WITH DECIMATION FILTER
 # adapted from @apouch github
 # updated 05_16_2024
 
