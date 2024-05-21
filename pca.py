@@ -118,6 +118,7 @@ if __name__ == "__main__":
     tform, alignedmesh = align_meshes(source, target)
 
     if vect_bool: 
+        pc, c = compute_principal_component(alignedmesh)
         alignedvector = pca_vectors.apply_vector(alignedmesh)
         write_polydata(input_path + vector_file, alignedvector)
     
