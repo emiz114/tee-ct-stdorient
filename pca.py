@@ -1,10 +1,11 @@
 # adapted from @apouch github
-# updated 05_16_2024
+# updated 05_21_2024
 
 import sys
 import vtk
 import numpy as np
 from vtkmodules.util.numpy_support import vtk_to_numpy
+import pca_vectors
 
 def read_polydata(file_path):
     """ 
@@ -94,15 +95,20 @@ def write_polydata(output_path, aligned_polydata):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 5: 
+    if (len(sys.argv) != 5) and (len(sys.argv) != 6): 
         print("")
         print("*******************************************************************************************************************")
-        print("   USAGE: python3 | ./PATH/SCRIPT.py | /INPUT_PATH | /SOURCE.vtk | /TARGET.vtk | /OUTPUT.vtk   ")
+        print("   USAGE: python3 | ./PATH/SCRIPT.py | /INPUT_PATH | /SOURCE.vtk | /TARGET.vtk | /OUTPUT.vtk | /VECTOR_OUTPUT.vtk ")
         print("*******************************************************************************************************************")
         print("")
     else: 
         # extract filenames from command line arguments
         input_path, source_file, target_file, output_file = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+        if (len(sys.argv) == 6): 
+            vect_bool = True
+            vector_file = sys.argv[5]
+        else: 
+            vect_bool = False
 
     # Read input meshes
     source = read_polydata(input_path + source_file)
@@ -111,4 +117,8 @@ if __name__ == "__main__":
     # align meshes
     tform, alignedmesh = align_meshes(source, target)
 
+    if vect_bool: 
+        alignedvector = pca_vectors.apply_vector(alignedmesh)
+        write_polydata(input_path + vector_file, alignedvector)
+    
     write_polydata(input_path + output_file, alignedmesh)
