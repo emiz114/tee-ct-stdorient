@@ -5,7 +5,7 @@ import sys
 import vtk
 import numpy as np
 from vtkmodules.util.numpy_support import vtk_to_numpy
-import pca_vector
+import vtk_vector
 
 def read_polydata(file_path):
     """ 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     if vect_bool: 
         pc, c = compute_principal_component(alignedmesh)
-        alignedvector = pca_vector.apply_vector(alignedmesh)
+        alignedvector = vtk_vector.apply_vector(alignedmesh)
         write_polydata(input_path + vector_file, alignedvector)
     
     write_polydata(input_path + output_file, alignedmesh)
