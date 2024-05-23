@@ -1,6 +1,8 @@
 # ALIGNS PCA TO AXES
 # created 05_21_2024
+# updated 05_23_2024
 
+import os
 import sys
 import vtk
 import numpy as np
@@ -87,27 +89,31 @@ def write_polydata(output_path, aligned_polydata):
 
 if __name__ == "__main__":
 
-    if (len(sys.argv) != 6): 
+    if (len(sys.argv) != 5): 
         print("")
         print("*******************************************************************************************************************")
-        print("   USAGE: python3 | ./PATH/SCRIPT.py | /INPUT_PATH | /INPUT.vtk | /OUTPUT.vtk | /PCA_VECTOR.vtk | /Z_VECTOR.vtk ")
+        print("   USAGE: python3 | ./PATH/SCRIPT.py | FRAME | ID | /INPUT_PATH | /INPUT.vtk ")
         print("*******************************************************************************************************************")
         print("")
     else: 
         # extract filenames from command line arguments
-        input_path, input_file, output_file, pca_vector_file, z_vector_file = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+        frame, id, input_path, input_file = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+        folder_name = "mesh" + frame + "_" + id + "_oriented"
 
     # Read input meshes
     mesh = read_polydata(input_path + input_file)
 
     # align pca
     tform, alignedmesh = align_pca(mesh)
+
+    folder = os.path.join(input_path, folder_name)
+    os.makedirs(folder, exist_ok=True)
     
-    write_polydata(input_path + output_file, alignedmesh)
+    write_polydata(input_path + "/" + folder_name + "/" + folder_name + ".vtk", alignedmesh)
 
     # draw pca and z-axis
     pc, c = compute_principal_component(mesh)
     pc_vector = vtk_vector.apply_vector(pc, c)
-    write_polydata(input_path + pca_vector_file, pc_vector)
+    write_polydata(input_path + "/" + folder_name + "/" + folder_name + "_pca.vtk", pc_vector)
     z_vector = vtk_vector.apply_vector(np.array([0, 0, 1]), c)
-    write_polydata(input_path + z_vector_file, z_vector)
+    write_polydata(input_path + "/" + folder_name + "/" + folder_name + "_z.vtk", z_vector)
