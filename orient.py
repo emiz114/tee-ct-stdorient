@@ -1,6 +1,6 @@
 # ORIENTS AV TO AXES
 # created 05_21_2024
-# updated 05_30_2024
+# updated 06_03_2024
 
 import os
 import sys
@@ -43,50 +43,48 @@ def apply_tform(mesh, tform):
 
     return tform_filter.GetOutput()
 
-def find_ncusp_axis(meshes, method): 
+def find_ncusp_axis(meshes, method=1): 
     """
     Determines the axis running through NCusp to be aligned with the x axis
     Implements specified method
     """
-    p_vect = np.zeros(3)
-    lr_pt, _ = com.locate_commissure(meshes[1], meshes[2], meshes[5])
+    p_vect = np.array([0, 0, 0])
+    
+    lr_pt = com.locate_commissure(meshes[1], meshes[2], meshes[5])
     # l-r commissure vect
     if method == 0: 
         p_vect = lr_pt
         p_vect[2] = 0
     # l-n, r-n commissure bisection vect
     else:
-        ln_pt, _ = com.locate_commissure(meshes[1], meshes[3], meshes[5])
-        rn_pt, _ = com.locate_commissure(meshes[2], meshes[3], meshes[5])
+        ln_pt = com.locate_commissure(meshes[1], meshes[3], meshes[5])
+        rn_pt = com.locate_commissure(meshes[2], meshes[3], meshes[5])
         # vtk_objects.create_point(ln_pt, "/Users/emiz/Desktop/lnpt.vtk")
         # vtk_objects.create_point(rn_pt, "/Users/emiz/Desktop/rnpt.vtk")
-        # calculate mid-point
+        # calculate mid-point and vector from lr_pt
         for i in range(2): 
             p_vect[i] = lr_pt[i] - (ln_pt[i] + rn_pt[i])/2
-    
-    # vtk_objects.create_point(p_vect, "/Users/emiz/Desktop/help.vtk")
-    # vtk_objects.create_point(np.array([0, 0, 0]), "/Users/emiz/Desktop/centroid.vtk")
-    print(p_vect)
+
     return p_vect
 
 if __name__ == "__main__":
 
-    if (len(sys.argv) != 5): 
+    if (len(sys.argv) != 4): 
         print("")
-        print("*********************************************************************************")
-        print("   USAGE: python3 | ./PATH/SCRIPT.py | /INPUT_PATH | FRAME | ID | METHOD (0/1)   ")
-        print("*********************************************************************************")
+        print("******************************************************************")
+        print("   USAGE: python3 | ./PATH/SCRIPT.py | /INPUT_PATH | FRAME | ID   ")
+        print("******************************************************************")
         print("")
-    elif (int(sys.argv[4]) != 0 and int(sys.argv[4]) != 1): 
-        print("")
-        print("***************************************************")
-        print("   METHOD 0 -> L-R COMMISSURE VECT   ")
-        print("   METHOD 1 -> L-N:R-N COMMISSURE BISECTION VECT   ")
-        print("***************************************************")
-        print("")
+    # elif (int(sys.argv[4]) != 0 and int(sys.argv[4]) != 1): 
+    #     print("")
+    #     print("***************************************************")
+    #     print("   METHOD 0 -> L-R COMMISSURE VECT   ")
+    #     print("   METHOD 1 -> L-N:R-N COMMISSURE BISECTION VECT   ")
+    #     print("***************************************************")
+    #     print("")
     else: 
         # extract filenames from command line arguments
-        input_path, frame, id, method = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+        input_path, frame, id = sys.argv[1], sys.argv[2], sys.argv[3]
 
     # path
     path = input_path + "/mesh" + frame + "_" + id + "/mesh" + frame + "_" + id
@@ -107,31 +105,24 @@ if __name__ == "__main__":
         meshes[i] = vtkIO.read_polydata(path + components[i])
     
     # calculate principal components and centroids
-    pc_stj, c_stj = pca.compute_pca(meshes[5])
     pc_rw, c_rw = pca.compute_pca(meshes[4])
     
     # calculate tform
-    tformz = calc_tform(pc_rw, c_stj, np.array([0, 0, 1]))
+    tformz = calc_tform(pc_rw, c_rw, np.array([0, 0, 1]))
 
     # apply meshes
     for i in range(6): 
         meshes[i] = apply_tform(meshes[i], tformz)
-    
-    vtkIO.write_polydata("/Users/emiz/Desktop/idkwhattodo.vtk", meshes[0])
 
     # find ncusp vector / axis
-    ncusp_vect = find_ncusp_axis(meshes, method)
-
-    # points = vtk.vtkPoints()
-    # points.InsertNextPoint(p_cusp)
-    # polyData = vtk.vtkPolyData()
-    # polyData.SetPoints(points)
-    #vtkIO.write_polydata(input_path + "/mesh01_bavcta001_baseline_lr.vtk", polyData)
+    ncusp_vect = find_ncusp_axis(meshes)
 
     # ORIENT X AXIS
     tformx = calc_tform(ncusp_vect, np.array([0, 0, 0]), np.array([1, 0, 0]))
     vtkIO.write_polydata(input_path + "/mesh" + frame + "_" + id + 
                          "/*mesh" + frame + "_" + id + "_" + str(method) + ".vtk", apply_tform(meshes[0], tformx))
+    
+    # APPLY TFORM TO ALL COMPONENTS
     # for i in range(6):
     #     meshes[i] = apply_tform(meshes[i], tformx)
     #     vtkIO.write_polydata(input_path + "file" + components[i], meshes[i])
