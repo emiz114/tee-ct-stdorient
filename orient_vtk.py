@@ -1,6 +1,6 @@
-# ORIENTS AV TO AXES
+# ORIENTS AV VTK SURFACE MESH TO STD AXES
 # created 05_21_2024
-# updated 06_03_2024
+# updated 06_24_2024
 
 import os
 import sys
@@ -10,8 +10,19 @@ import vtk_fileIO as vtkIO
 import pca_align as pca
 import commissure as com
 import vtk_objects
+import itk_tform
 
-def calc_tform(pc, c, axis): 
+def calc_origin_tform(c): 
+    """
+    Calculates the transformation of bringing the centroid to the origin
+    - c: specified centroid point
+    """
+    tform = vtk.vtkTransform()
+    tform.PostMultiply()
+    tform.Translate(-c) # brings to origin
+    return tform
+
+def calc_tform(pc, axis): 
     """
     Calculates the transformation of aligning pc from centroid to axis
     - pc: specified direction vector
@@ -27,7 +38,7 @@ def calc_tform(pc, c, axis):
     # create transformation object (vtkTransform()) and applies rotation
     tform = vtk.vtkTransform()
     tform.PostMultiply()
-    tform.Translate(-c) # brings to origin
+    #tform.Translate(-c) # brings to origin
     tform.RotateWXYZ(np.degrees(-rotation_angle), *rotation_axis)
 
     return tform
@@ -99,7 +110,6 @@ if __name__ == "__main__":
                        ])
     meshes = np.zeros(6, dtype = object)
 
-    # ORIENT Z AXIS
     # read input meshes
     for i in range(6): 
         meshes[i] = vtkIO.read_polydata(path + components[i])
@@ -107,12 +117,23 @@ if __name__ == "__main__":
     # calculate principal components and centroids
     pc_rw, c_rw = pca.compute_pca(meshes[4])
     
-    # calculate tform
+    # calculate tform to origin
+    tformo = calc_origin_tform(c_rw)
+    print(tformo.GetMatrix())
+    for i in range(5):
+        meshes[i+1] = apply_tform(meshes[i+1], tformo)
+    vtkIO.write_polydata(input_path + "/mesh" + frame + "_" + id + 
+                         "/*mesh" + frame + "_" + id + "_o.vtk", apply_tform(meshes[0], tformo))
+
+    # ORIENT Z AXIS
+    # calculate tform for z
     tformz = calc_tform(pc_rw, c_rw, np.array([0, 0, 1]))
 
     # apply meshes
-    for i in range(6): 
-        meshes[i] = apply_tform(meshes[i], tformz)
+    for i in range(5): 
+        meshes[i+1] = apply_tform(meshes[i+1], tformz)
+    vtkIO.write_polydata(input_path + "/mesh" + frame + "_" + id + 
+                         "/*mesh" + frame + "_" + id + "_z.vtk", apply_tform(meshes[0], tformz))
 
     # find ncusp vector / axis
     ncusp_vect = find_ncusp_axis(meshes)
@@ -120,7 +141,11 @@ if __name__ == "__main__":
     # ORIENT X AXIS
     tformx = calc_tform(ncusp_vect, np.array([0, 0, 0]), np.array([1, 0, 0]))
     vtkIO.write_polydata(input_path + "/mesh" + frame + "_" + id + 
-                         "/*mesh" + frame + "_" + id + "_" + str(method) + ".vtk", apply_tform(meshes[0], tformx))
+                         "/*mesh" + frame + "_" + id + ".vtk", apply_tform(meshes[0], tformx))
+    
+    tformz.Concatenate(tformx)
+    itk_tform.write_itk_tform(input_path + "/mesh" + frame + "_" + id + 
+                             "/*mesh" + frame + "_" + id + "_tform.txt", tformz.GetMatrix())
     
     # APPLY TFORM TO ALL COMPONENTS
     # for i in range(6):
