@@ -1,7 +1,8 @@
 # ORIENTS AV VTK SURFACE MESH TO STD AXES (with segmentation img)
 # created 07_08_2024
-# updated 07_09_2024
+# updated 07_17_2024
 
+import os
 import sys
 import vtk
 import numpy as np
@@ -10,6 +11,7 @@ import pca_align as pca
 import commissure as com
 import SimpleITK as sitk
 import extract_mesh
+import parsefile
 
 def extract_surface_meshes(seg_img_path): 
     """
@@ -84,20 +86,56 @@ def find_ncusp_axis(meshes, method=1):
         # calculate mid-point and vector from lr_pt
         for i in range(2): 
             p_vect[i] = (ln_pt[i] + rn_pt[i])/2 - lr_pt[i]
-    print(p_vect)
+    #print(p_vect)
     return p_vect
+
+def orient(meshes, output_path): 
+    """
+    Applies orientation: 
+    (1) Bring to origin
+    (2) Rotate pca to z-axis
+    (3) Rotate NCusp bisection to x-axis
+    - meshes: np.array of surface meshes
+    """
+    # calculate principal components and centroids
+    pc_rw, c_rw = pca.compute_pca(meshes[4])
+
+    # calculate tform to origin
+    tform = calc_origin_tform(c_rw)
+    for i in range(6):
+        meshes[i] = apply_tform(meshes[i], tform)
+
+    # ORIENT Z AXIS
+    # calculate tform for z
+    tformz = calc_tform(pc_rw, np.array([0, 0, 1]))
+
+    # apply meshes
+    for i in range(6):
+        meshes[i] = apply_tform(meshes[i], tformz)
+
+    # find ncusp vector / axis
+    ncusp_vect = find_ncusp_axis(meshes)
+
+    # ORIENT X AXIS
+    tformx = calc_tform(ncusp_vect, np.array([1, 0, 0]))
+    vtkIO.write_polydata(output_path, apply_tform(meshes[0], tformx))
+                
+    tform.Concatenate(tformz)
+    tform.Concatenate(tformx)
+
+    return tform
 
 if __name__ == "__main__":
 
     if (len(sys.argv) != 4): 
         print("")
-        print("********************************************************************")
-        print("   USAGE: python3 | ./PATH/SCRIPT.py | /SEG_INPUT_PATH | FRAME | ID ")
-        print("********************************************************************")
+        print("************************************************************************************************")
+        print("   USAGE: python3 | ./PATH/SCRIPT.py | /SEG_INPUT_PATH | FRAME(0 FOR ALL SEGS IN FOLDER) | ID   ")
+        print("************************************************************************************************")
         print("")
     else: 
         # extract filenames from command line arguments
-        seg_img_path, frame, id = sys.argv[1], sys.argv[2], sys.argv[3]
+        folder_path, frame, id = sys.argv[1], sys.argv[2], sys.argv[3]
 
     # necessary vtk files: 6
     # 0 multi
@@ -107,41 +145,25 @@ if __name__ == "__main__":
     # 4 rootwall
     # 5 stj
 
-    meshes = extract_surface_meshes(seg_img_path + "/seg" + frame + "_" + id + ".nii.gz")
-    # calculate principal components and centroids
-    pc_rw, c_rw = pca.compute_pca(meshes[4])
-    print(pc_rw)
+    if (frame != "0"): 
+        seg_img_path = os.path.join(folder_path, "seg" + frame + "_CT_" + id + ".nii.gz")
+        meshes = extract_surface_meshes(seg_img_path)
+        # example = meshes[0]
+        output_path = "/Users/emiz/Desktop/research/bavcta001_baseline_meshes/" + frame + ".vtk"
+        tform = orient(meshes, output_path)
+    else: 
+        for item in os.listdir(folder_path):
+            seg_img_path = os.path.join(folder_path, item)
+            # Check if the item is a file (and not a folder)
+            if os.path.isfile(seg_img_path):
+                new_folder_path = folder_path + "/oriented_meshes"
+                if not os.path.exists(new_folder_path):
+                        os.makedirs(new_folder_path)
+                if (item != ".DS_Store"):
+                    print(item)
+                    frm, id = parsefile.parse_frame_id(item)
+                    meshes = extract_surface_meshes(seg_img_path)
+                    output_path = new_folder_path + "/mesh" + frm + ".vtk"
+                    tform = orient(meshes, output_path)
 
-    # calculate tform to origin
-    tformo = calc_origin_tform(c_rw)
-    for i in range(6):
-        meshes[i] = apply_tform(meshes[i], tformo)
-    # vtkIO.write_polydata(seg_img_path + "/mesh" + frame + "_" + id + 
-    #                      "/*mesh" + frame + "_" + id + "_o0.vtk", meshes[0])
-
-    # ORIENT Z AXIS
-    # calculate tform for z
-    tformz = calc_tform(pc_rw, np.array([0, 0, 1]))
-
-    # apply meshes
-    for i in range(6):
-        meshes[i] = apply_tform(meshes[i], tformz)
-    # vtkIO.write_polydata(seg_img_path + "/mesh" + frame + "_" + id + 
-    #                      "/*mesh" + frame + "_" + id + "_z0.vtk", meshes[0])
-
-    # find ncusp vector / axis
-    ncusp_vect = find_ncusp_axis(meshes)
-
-    # ORIENT X AXIS
-    tformx = calc_tform(ncusp_vect, np.array([1, 0, 0]))
-    vtkIO.write_polydata(seg_img_path + "/mesh" + frame + "_" + id + 
-                         "/**mesh" + frame + "_" + id + ".vtk", apply_tform(meshes[0], tformx))
-    
-    tformz.Concatenate(tformx)
-    #itk_tform.write_itk_tform(seg_img_path + "/mesh" + frame + "_" + id + 
-    #                         "/*mesh" + frame + "_" + id + "_tform.txt", tformz.GetMatrix()) 
-    
-    # APPLY TFORM TO ALL COMPONENTS
-    # for i in range(6):
-    #     meshes[i] = apply_tform(meshes[i], tformx)
-    #     vtkIO.write_polydata(input_path + "file" + components[i], meshes[i])
+            
