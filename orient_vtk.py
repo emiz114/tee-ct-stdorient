@@ -1,6 +1,6 @@
 # ORIENTS AV VTK SURFACE MESH TO STD AXES (with segmentation img)
 # created 07_08_2024
-# updated 07_17_2024
+# updated 07_18_2024
 
 import os
 import sys
@@ -33,6 +33,20 @@ def calc_origin_tform(c):
     tform.PostMultiply()
     tform.Translate(-c) # brings to origin
     return tform
+
+def correct_pca(pc, mesh_stj): 
+    """
+    Corrects the pca vector to the direction of the stj
+    - pc: specified direction vector
+    - mesh_stj: surface mesh of stj (meshes[5])
+    """
+    _, c_stj = pca.compute_pca(mesh_stj)
+    pc1 = np.linalg.norm(c_stj - pc)
+    pc2 = np.linalg.norm(c_stj + pc)
+    if pc1 > pc2: 
+        return -pc
+    else: 
+        return pc
 
 def calc_tform(pc, axis): 
     """
@@ -99,6 +113,7 @@ def orient(meshes, output_path):
     """
     # calculate principal components and centroids
     pc_rw, c_rw = pca.compute_pca(meshes[4])
+    pc = correct_pca(pc_rw, meshes[5])
 
     # calculate tform to origin
     tform = calc_origin_tform(c_rw)
@@ -107,7 +122,7 @@ def orient(meshes, output_path):
 
     # ORIENT Z AXIS
     # calculate tform for z
-    tformz = calc_tform(pc_rw, np.array([0, 0, 1]))
+    tformz = calc_tform(pc, np.array([0, 0, 1]))
 
     # apply meshes
     for i in range(6):
